@@ -8,10 +8,10 @@ LaunchApp::LaunchApp(int &argc, char **argv)
 {
     QCommandLineParser parser;
 
-    parser.addHelpOption();
+//    parser.addHelpOption();
     parser.addVersionOption();
 
-    parser.addPositionalArgument("<file>", QCoreApplication::translate("main", "The file to launch. Following types of file supported\n- desktop enttry (.desktop)"));
+    parser.addPositionalArgument("<file>", QCoreApplication::translate("main", "The file to launch of following types \n- desktop entry (.desktop)"));
 
     parser.process(*this);
 
@@ -29,7 +29,7 @@ int LaunchApp::init()
 
 int LaunchApp::start()
 {
-    Mere::Launch::DesktopLauncher launcher(m_path);
+    Mere::Launch::DesktopLauncher launcher(m_path.toStdString());
 
     int err = launcher.launch();
 
