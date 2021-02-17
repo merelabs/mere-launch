@@ -135,7 +135,6 @@ std::string Mere::Launch::DesktopLauncher::find(const std::string &file, const s
         if (path[path.length() - 1] != '/')
             path.append("/");
 
-        qDebug() << "Y  Checking in:" << dir.c_str();
         path.append(file);
 
         if(std::ifstream(path).good())
