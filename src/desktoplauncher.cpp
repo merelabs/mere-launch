@@ -3,7 +3,10 @@
 #include "mere/utils/stringutils.h"
 #include "mere/xdg/desktopentry.h"
 #include "mere/xdg/desktopentryspec.h"
+#include "mere/xdg/autostartdirectoryspec.h"
+#include "mere/xdg/desktopentrydirectoryspec.h"
 
+#include <fstream>
 #include <iostream>
 
 #include <QDir>
@@ -30,7 +33,7 @@ private:
     DesktopLauncher *q_ptr;
 };
 
-Mere::Launch::DesktopLauncher::DesktopLauncher(const QString &path, QObject *parent)
+Mere::Launch::DesktopLauncher::DesktopLauncher(const std::string &path, QObject *parent)
     : QObject(parent),
       m_path(path),
       m_process (new ProcessPrivate(this))
@@ -40,32 +43,52 @@ Mere::Launch::DesktopLauncher::DesktopLauncher(const QString &path, QObject *par
 
 int Mere::Launch::DesktopLauncher::init()
 {
-    if (m_path.startsWith("~/"))
-        m_path = m_path.replace(0, 1, QDir::homePath());
-
-    QFileInfo info(m_path);
-    if(!info.isAbsolute())
+    std::string suffix = m_path.substr(m_path.length() - strlen(".desktop"));
+    if (suffix != ".desktop")
     {
-        std::cout << "please provide absolute path of the file - " << m_path.toStdString() << std::endl;
+        std::cout << "only desktop entry (.desktop) file supported - " << m_path  << std::endl;
         return 1;
     }
 
-    if (!info.exists())
+    if (m_path[0] == '~')
+        m_path = m_path.replace(0, 1, QDir::homePath().toStdString());
+
+    if (m_path[0] != '/')
     {
-        std::cout << "file not found - " << m_path.toStdString()  << std::endl;
-        return 2;
+        bool found = false;
+
+        // check in application directory
+        std::vector<std::string> dirs = Mere::XDG::DesktopEntryDirectorySpec::applicationDirectories();
+        std::string path = find(m_path, dirs);
+
+        // check in autostart directory
+        if (Mere::Utils::StringUtils::isBlank(path))
+        {
+            std::vector<std::string> dirs = Mere::XDG::AutostartDirectorySpec::autostartDirectories();
+            path = find(m_path, dirs);
+        }
+
+        if (Mere::Utils::StringUtils::isBlank(path))
+        {
+            std::cout << "file not found in application directories, please check file name - " << m_path << std::endl;
+            return 2;
+        }
+
+        m_path = path;
+    }
+    else
+    {
+        if (!std::ifstream(m_path).good());
+        {
+            std::cout << "file not found - " << m_path  << std::endl;
+            return 3;
+        }
     }
 
-    if (info.suffix().compare("desktop") != 0)
-    {
-        std::cout << "only desktop entry (.desktop) file supported - " << m_path.toStdString()  << std::endl;
-        return 3;
-    }
-
-    m_desktopEntry = Mere::XDG::DesktopEntrySpec::parse(info.absoluteFilePath());
+    m_desktopEntry = Mere::XDG::DesktopEntrySpec::parse(m_path);
     if (!m_desktopEntry.valid())
     {
-        std::cout << "not a valid .desktop file - " << m_path.toStdString()  << std::endl;
+        std::cout << "not a valid .desktop file - " << m_path  << std::endl;
         return 4;
     }
 
@@ -97,6 +120,31 @@ int Mere::Launch::DesktopLauncher::launch()
     bool ok = m_process->startDetached(program, arguments);
 
     return !ok;
+}
+
+std::string Mere::Launch::DesktopLauncher::find(const std::string &file, const std::vector<std::string> &dirs) const
+{
+    if (Mere::Utils::StringUtils::isBlank(file))
+        return "";
+
+    if (dirs.empty())
+        return "";
+
+    for(const std::string &dir : dirs)
+    {
+        std::string path(dir);
+
+        if (path[path.length() - 1] != '/')
+            path.append("/");
+
+        qDebug() << "Y  Checking in:" << dir.c_str();
+        path.append(file);
+
+        if(std::ifstream(path).good())
+            return path;
+    }
+
+    return "";
 }
 
 #include "desktoplauncher.moc"

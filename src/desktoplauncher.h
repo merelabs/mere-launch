@@ -13,7 +13,7 @@ class DesktopLauncher : public QObject
 {
     Q_OBJECT
 public:
-    explicit DesktopLauncher(const QString &path, QObject *parent = nullptr);
+    explicit DesktopLauncher(const std::string &path, QObject *parent = nullptr);
 
     int launch();
 
@@ -21,8 +21,10 @@ private:
     int init();
     int start();
 
+    std::string find(const std::string &file, const std::vector<std::string> &dirs) const;
+
 private:
-    QString m_path;
+    std::string m_path;
     Mere::XDG::DesktopEntry m_desktopEntry;
 
     class ProcessPrivate;
