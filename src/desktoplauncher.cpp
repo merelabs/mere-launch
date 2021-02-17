@@ -55,8 +55,6 @@ int Mere::Launch::DesktopLauncher::init()
 
     if (m_path[0] != '/')
     {
-        bool found = false;
-
         // check in application directory
         std::vector<std::string> dirs = Mere::XDG::DesktopEntryDirectorySpec::applicationDirectories();
         std::string path = find(m_path, dirs);
