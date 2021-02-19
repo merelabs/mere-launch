@@ -56,13 +56,13 @@ int Mere::Launch::DesktopLauncher::init()
     if (m_path[0] != '/')
     {
         // check in application directory
-        std::vector<std::string> dirs = Mere::XDG::DesktopEntryDirectorySpec::applicationDirectories();
+        std::vector<std::string> dirs = Mere::XDG::DesktopEntryDirectorySpec::directories();
         std::string path = find(m_path, dirs);
 
         // check in autostart directory
         if (Mere::Utils::StringUtils::isBlank(path))
         {
-            std::vector<std::string> dirs = Mere::XDG::AutostartDirectorySpec::autostartDirectories();
+            std::vector<std::string> dirs = Mere::XDG::AutostartDirectorySpec::directories();
             path = find(m_path, dirs);
         }
 
@@ -135,7 +135,6 @@ std::string Mere::Launch::DesktopLauncher::find(const std::string &file, const s
         if (path[path.length() - 1] != '/')
             path.append("/");
 
-        qDebug() << "Y  Checking in:" << dir.c_str();
         path.append(file);
 
         if(std::ifstream(path).good())
