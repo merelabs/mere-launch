@@ -2,15 +2,16 @@
 
 #include "mere/utils/stringutils.h"
 #include "mere/xdg/desktopentry.h"
-#include "mere/xdg/desktopentryspec.h"
-#include "mere/xdg/autostartdirectoryspec.h"
-#include "mere/xdg/desktopentrydirectoryspec.h"
+#include "mere/xdg/desktopentryparser.h"
+#include "mere/xdg/autostartdirectory.h"
+#include "mere/xdg/desktopentrydirectory.h"
 
 #include <fstream>
 #include <iostream>
+#include <limits.h>
+#include <stdlib.h>
 
 #include <QDir>
-#include <QFileInfo>
 #include <QProcess>
 
 class Mere::Launch::DesktopLauncher::ProcessPrivate : public QProcess
@@ -43,54 +44,64 @@ Mere::Launch::DesktopLauncher::DesktopLauncher(const std::string &path, QObject 
 
 int Mere::Launch::DesktopLauncher::init()
 {
-    std::string suffix = m_path.substr(m_path.length() - strlen(".desktop"));
-    if (suffix != ".desktop")
+    // check for the file extension
+    std::string ext(".desktop");
+    auto pos = m_path.find(ext);
+    if (pos != m_path.length() - ext.length())
     {
-        std::cout << "only desktop entry (.desktop) file supported - " << m_path  << std::endl;
+        std::cout << "file has no .desktop extension, please check file name - " << m_path << std::endl;
         return 1;
     }
 
-    if (m_path[0] == '~')
-        m_path = m_path.replace(0, 1, QDir::homePath().toStdString());
-
-    if (m_path[0] != '/')
+    std::string realpath = this->realpath(m_path);
+    if (realpath.empty())
     {
-        // check in application directory
-        std::vector<std::string> dirs = Mere::XDG::DesktopEntryDirectorySpec::directories();
-        std::string path = find(m_path, dirs);
-
-        // check in autostart directory
-        if (Mere::Utils::StringUtils::isBlank(path))
-        {
-            std::vector<std::string> dirs = Mere::XDG::AutostartDirectorySpec::directories();
-            path = find(m_path, dirs);
-        }
-
-        if (Mere::Utils::StringUtils::isBlank(path))
-        {
-            std::cout << "file not found in application directories, please check file name - " << m_path << std::endl;
-            return 2;
-        }
-
-        m_path = path;
-    }
-    else
-    {
-        if (!std::ifstream(m_path).good());
-        {
-            std::cout << "file not found - " << m_path  << std::endl;
-            return 3;
-        }
+        std::cout << "file not found, please check file name - " << m_path << std::endl;
+        return 2;
     }
 
-    m_desktopEntry = Mere::XDG::DesktopEntrySpec::parse(m_path);
-    if (!m_desktopEntry.valid())
+    Mere::XDG::DesktopEntryParser parser(realpath);
+    if(!parser.parse())
     {
-        std::cout << "not a valid .desktop file - " << m_path  << std::endl;
+        std::cout << "file parsing failed, please check file name - " << realpath << std::endl;
+        return 3;
+    }
+
+    m_entry = parser.entry();
+    if (!m_entry.valid())
+    {
+        std::cout << "not a valid .desktop file - " << realpath  << std::endl;
         return 4;
     }
 
     return 0;
+}
+
+std::string Mere::Launch::DesktopLauncher::realpath(const std::string &path)
+{
+    std::string realpath(path);
+
+    char rpath[PATH_MAX];
+    if(::realpath(path.c_str(), rpath))
+    {
+        realpath.replace(0, realpath.length(), rpath);
+    }
+    else
+    {
+        realpath = find(path, {QDir::currentPath().append("/").toStdString()});
+        if (realpath.empty())
+        {
+            std::vector<std::string> dirs = Mere::XDG::DesktopEntryDirectory::directories();
+            realpath = find(path, dirs);
+            if (realpath.empty())
+            {
+                std::vector<std::string> dirs = Mere::XDG::AutostartDirectory::directories();
+                realpath = find(path, dirs);
+            }
+        }
+    }
+
+    return realpath;
 }
 
 int Mere::Launch::DesktopLauncher::launch()
@@ -98,43 +109,30 @@ int Mere::Launch::DesktopLauncher::launch()
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
     m_process->setProcessEnvironment(env);
 
-    QVariant type = m_desktopEntry.get(Mere::XDG::DesktopEntry::Type);
-    if (type == QVariant("Application"))
+    Mere::XDG::DesktopEntry::Type type = m_entry.typeId();
+    if (type == Mere::XDG::DesktopEntry::Type::Application)
     {
-        QVariant path = m_desktopEntry.get(Mere::XDG::DesktopEntry::Path);
-        if (path.isValid())
-            m_process->setWorkingDirectory(path.toString());
+        std::string path = m_entry.path();
+        if (!path.empty())
+            m_process->setWorkingDirectory(path.c_str());
     }
 
-    QVariant exec = m_desktopEntry.get(Mere::XDG::DesktopEntry::Exec);
-    QString program = exec.toString();
-    if (Utils::StringUtils::isBlank(program))
-            return 5;
+    std::string program = m_entry.exec();
+    if (program.empty()) return 5;
 
-    QStringList arguments;
-
-    //std::cout << "going to start " << program.toStdString().c_str() << " with " << std::endl;
-
-    bool ok = m_process->startDetached(program, arguments);
+    bool ok = m_process->startDetached(program.c_str(), {});
 
     return !ok;
 }
 
 std::string Mere::Launch::DesktopLauncher::find(const std::string &file, const std::vector<std::string> &dirs) const
 {
-    if (Mere::Utils::StringUtils::isBlank(file))
-        return "";
-
-    if (dirs.empty())
+    if (Mere::Utils::StringUtils::isBlank(file) || dirs.empty())
         return "";
 
     for(const std::string &dir : dirs)
     {
         std::string path(dir);
-
-        if (path[path.length() - 1] != '/')
-            path.append("/");
-
         path.append(file);
 
         if(std::ifstream(path).good())
