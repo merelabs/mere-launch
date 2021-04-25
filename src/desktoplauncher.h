@@ -14,12 +14,10 @@ class DesktopLauncher : public QObject
     Q_OBJECT
 public:
     explicit DesktopLauncher(const std::string &path, QObject *parent = nullptr);
-
+    int init();
     int launch();
 
 private:
-    int init();
-    int start();
     std::string realpath(const std::string &path);
 
     std::string find(const std::string &file, const std::vector<std::string> &dirs) const;

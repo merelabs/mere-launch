@@ -8,10 +8,10 @@ int main(int argc, char *argv[])
     LaunchApp app(argc, argv);
 
     int err = app.init();
-    if (err) ::exit(1);
+    if (err) ::exit(err);
 
     err = app.start();
-    ::exit(err);
+    if(err) ::exit(err);
 
-    //return app.exec();
+    return app.exec();
 }

@@ -1,14 +1,13 @@
 #include "launchapp.h"
 #include "desktoplauncher.h"
 
+#include <QTimer>
 #include <QCommandLineParser>
 
 LaunchApp::LaunchApp(int &argc, char **argv)
     : QCoreApplication(argc, argv)
 {
     QCommandLineParser parser;
-
-//    parser.addHelpOption();
     parser.addVersionOption();
 
     parser.addPositionalArgument("<file>", QCoreApplication::translate("main", "The file to launch of following types \n- desktop entry (.desktop)"));
@@ -19,7 +18,7 @@ LaunchApp::LaunchApp(int &argc, char **argv)
     if (arguments.isEmpty())
         parser.showHelp(0);
 
-    m_path = arguments.at(0);
+    m_path = arguments.at(0).toStdString();
 }
 
 int LaunchApp::init()
@@ -29,9 +28,14 @@ int LaunchApp::init()
 
 int LaunchApp::start()
 {
-    Mere::Launch::DesktopLauncher launcher(m_path.toStdString());
+    QTimer::singleShot(0, [&]{
+        Mere::Launch::DesktopLauncher launcher(m_path);
+        int err = launcher.init();
+        if (err) return quit();
 
-    int err = launcher.launch();
+        err = launcher.launch();
+        quit();
+    });
 
-    return err;
+    return 0;
 }

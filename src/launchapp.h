@@ -13,8 +13,7 @@ public:
     int start();
 
 private:
-    QString m_path;
-
+    std::string m_path;
 };
 
 #endif // LAUNCHERAPP_H
