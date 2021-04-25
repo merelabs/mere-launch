@@ -8,8 +8,8 @@ $ mere-launch xterm.desktop
 
 ## required ##
 `mere-launch` requires following libaries,
-- [mere-xdg](https://github.com/merelabs/mere-xdg)
-- [mere-utils](https://github.com/merelabs/mere-utils)
+- [mere-xdg](https://github.com/merelabs/mere-xdg-lib)
+- [mere-utils](https://github.com/merelabs/mere-utils-lib)
 
 ## build ##
 ```
