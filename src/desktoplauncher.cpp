@@ -10,6 +10,7 @@
 #include "mere/xdg/desktopentrydirectory.h"
 
 #include <iostream>
+#include <sstream>
 
 #include <QDir>
 #include <QProcess>
@@ -107,12 +108,27 @@ int Mere::Launch::DesktopLauncher::launch()
             m_process->setWorkingDirectory(path.c_str());
     }
 
-    std::string program = m_entry.exec();
-    if (program.empty()) return 5;
+    std::string command = m_entry.exec();
+    if (command.empty()) return 1;
 
-    bool ok = m_process->startDetached(program.c_str(), {});
+    std::vector<std::string> parts = Mere::Utils::StringUtils::split(command);
+    unsigned int size = parts.size();
+    if (size == 0) return 1;
 
-    return !ok;
+    m_process->setProgram(parts.at(0).c_str());
+
+    if (size > 1)
+    {
+        QStringList arguments;
+        for(unsigned int i = 1; i < size; i++)
+            arguments << parts.at(i).c_str();
+        m_process->setArguments(arguments);
+    }
+
+    qint64 pid;
+    m_process->startDetached(&pid);
+
+    return 0;
 }
 
 std::string Mere::Launch::DesktopLauncher::find(const std::string &file, const std::vector<std::string> &dirs) const
