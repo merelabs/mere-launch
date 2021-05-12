@@ -18,5 +18,9 @@ $ qmake
 $ make
 $ make install
 ```
+### support
+If you find a bug, or have a feature suggestion, please [log an issue](https://github.com/merelabs/mere-utils-lib/issues). If you'd like to
+contribute, please read [How to Contribute](CONTRIBUTING.md).
+
 ## license ##
 All the code in this repository is licensed under a [BSD-2-Clause License](LICENSE).
