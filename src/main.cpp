@@ -13,5 +13,5 @@ int main(int argc, char *argv[])
     err = app.start();
     ::exit(err);
 
-    //return app.exec();
+    return app.exec();
 }

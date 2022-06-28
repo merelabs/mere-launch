@@ -61,13 +61,7 @@ int Mere::Launch::DesktopLauncher::init()
     }
 
     Mere::XDG::DesktopEntryParser parser(realpath);
-    if(!parser.parse())
-    {
-        std::cout << "file parsing failed, please check file name - " << realpath << std::endl;
-        return 3;
-    }
-
-    m_entry = parser.entry();
+    m_entry = parser.parse();
     if (!m_entry.valid())
     {
         std::cout << "not a valid .desktop file - " << realpath  << std::endl;
@@ -109,8 +103,8 @@ int Mere::Launch::DesktopLauncher::launch()
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
     m_process->setProcessEnvironment(env);
 
-    Mere::XDG::DesktopEntry::Type type = m_entry.typeId();
-    if (type == Mere::XDG::DesktopEntry::Type::Application)
+    Mere::XDG::DesktopEntry::TypeId type = m_entry.typeId();
+    if (type == Mere::XDG::DesktopEntry::TypeId::Application)
     {
         std::string path = m_entry.path();
         if (!path.empty())
